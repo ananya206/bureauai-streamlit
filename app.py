@@ -1,6 +1,7 @@
 import streamlit as st
 from fpdf import FPDF
 import datetime
+import os
 
 def generate_pdf(company_name):
     pdf = FPDF()
@@ -23,16 +24,19 @@ def generate_pdf(company_name):
         pdf.set_font("Arial", 'B', 14)
         pdf.cell(200, 10, txt=section, ln=True)
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=content)
+        # Ensure encoding compatibility
+        clean_content = content.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 10, txt=clean_content)
         pdf.ln(4)
 
     file_name = f"{company_name}_DealMemo.pdf"
-    pdf.output(file_name)
+    pdf.output(file_name.encode('latin-1', 'replace').decode('latin-1'))
     return file_name
 
+# Streamlit app
 st.set_page_config(page_title="BureauAI", layout="centered")
+st.title("BureauAI - Deal Memo Generator")
 
-st.title("📄 BureauAI – Deal Memo Generator")
 company_name = st.text_input("Enter company name:")
 
 if st.button("Generate Deal Memo"):
@@ -41,7 +45,7 @@ if st.button("Generate Deal Memo"):
     else:
         file_path = generate_pdf(company_name)
         with open(file_path, "rb") as file:
-            btn = st.download_button(
+            st.download_button(
                 label="Download Deal Memo PDF",
                 data=file,
                 file_name=file_path,
