@@ -1,53 +1,72 @@
 import streamlit as st
+import openai
 from fpdf import FPDF
-import datetime
+import tempfile
 import os
 
-def generate_pdf(company_name):
+# Title
+st.set_page_config(page_title="BureauAI", layout="centered")
+st.title("📊 BureauAI – AI-powered Deal Memo Generator")
+
+# User Input
+company_name = st.text_input("Enter the name of the company:")
+
+# Load OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+def generate_memo(company):
+    prompt = f"""
+You are an AI investment analyst writing a short but sharp 1-page deal memo on the company "{company}". Include the following sections:
+
+1. Company Overview
+2. Product & Market Fit
+3. Moat Analysis
+4. Financial Snapshot (mocked if real data is unknown)
+5. Red Flags
+6. Exit Potential
+7. Why We Like This Deal (make it investor-persuasive)
+
+Keep it crisp, professional, and investor-focused. Avoid fluff. Return the memo in markdown-style bullet points and short paragraphs.
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3
+    )
+    return response['choices'][0]['message']['content']
+
+def save_pdf(memo, company):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt=f"BureauAI Deal Memo: {company_name}", ln=True, align="C")
+    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.set_font("Arial", size=12)
-    pdf.ln(10)
 
-    sections = {
-        "Company Overview": f"{company_name} is a startup operating in the consumer sector with a unique positioning and market-driven offerings.",
-        "Why We Like This Deal": "Strong founding team, good early traction, signs of product-market fit.",
-        "Exit Potential": "High likelihood of acquisition within 5–7 years by strategic players.",
-        "Moat Analysis": "Tech-enabled supply chain, sticky customer base, and regional advantage.",
-        "Red Flags": "- High burn rate\n- Crowded market\n- Regulatory dependencies",
-        "Investment Scorecard": "Team: 8/10\nMarket: 7/10\nTraction: 6.5/10\nMoat: 7.5/10\nOverall Score: 7.25/10"
-    }
+    for line in memo.split('\n'):
+        pdf.multi_cell(0, 10, line)
 
-    for section, content in sections.items():
-        pdf.set_font("Arial", 'B', 14)
-        pdf.cell(200, 10, txt=section, ln=True)
-        pdf.set_font("Arial", size=12)
-        # Ensure encoding compatibility
-        clean_content = content.encode('latin-1', 'replace').decode('latin-1')
-        pdf.multi_cell(0, 10, txt=clean_content)
-        pdf.ln(4)
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(tmp_file.name)
+    return tmp_file.name
 
-    file_name = f"{company_name}_DealMemo.pdf"
-    pdf.output(file_name.encode('latin-1', 'replace').decode('latin-1'))
-    return file_name
-
-# Streamlit app
-st.set_page_config(page_title="BureauAI", layout="centered")
-st.title("BureauAI - Deal Memo Generator")
-
-company_name = st.text_input("Enter company name:")
-
+# Generate Button
 if st.button("Generate Deal Memo"):
-    if company_name.strip() == "":
+    if not company_name:
         st.warning("Please enter a company name.")
     else:
-        file_path = generate_pdf(company_name)
-        with open(file_path, "rb") as file:
+        with st.spinner("Generating deal memo..."):
+            memo = generate_memo(company_name)
+            pdf_path = save_pdf(memo, company_name)
+
+            st.success("✅ Deal memo generated!")
             st.download_button(
-                label="Download Deal Memo PDF",
-                data=file,
-                file_name=file_path,
+                label="📄 Download PDF",
+                data=open(pdf_path, "rb"),
+                file_name=f"{company_name}_deal_memo.pdf",
                 mime="application/pdf"
             )
+
+        st.subheader("🔍 Memo Preview")
+        st.markdown(memo)
