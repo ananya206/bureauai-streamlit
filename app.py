@@ -1,123 +1,111 @@
 import streamlit as st
 import openai
 from fpdf import FPDF
-import os
 
-# Custom CSS for VC Dark Theme
-st.markdown("""
-    <style>
-        .stApp {
-            background-color: #0E0E0E;
-            color: #FFFFFF;
-            font-family: 'Segoe UI', sans-serif;
-            background-image: radial-gradient(circle at top left, #1a1a1a, #0E0E0E);
-        }
+# App Config
+st.set_page_config(page_title="BureauAI - Investment Memo Generator", layout="centered")
 
-        h1, h2, h3, h4, h5, h6 {
-            color: #ffffff;
-            font-weight: 600;
-        }
+# Custom VC dark theme styling
+custom_css = """
+<style>
+    html, body, [class*="css"] {
+        background-color: #111111;
+        color: #f5f5f5;
+        font-family: 'Helvetica Neue', sans-serif;
+    }
 
-        .stTextInput>div>div>input,
-        .stTextArea textarea {
-            background-color: rgba(255,255,255,0.05);
-            color: white;
-            border-radius: 8px;
-        }
+    .title {
+        font-size: 48px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        text-transform: uppercase;
+        color: #f0f0f0;
+    }
 
-        button[kind="primary"] {
-            background-color: #D72638;
-            color: white;
-            border-radius: 10px;
-            font-weight: 600;
-        }
+    .subtitle {
+        font-size: 14px;
+        letter-spacing: 2px;
+        color: #888;
+        margin-top: -20px;
+        margin-bottom: 30px;
+    }
 
-        button[kind="primary"]:hover {
-            background-color: #b01e2c;
-            color: white;
-        }
+    .stTextInput>div>div>input {
+        background-color: #1e1e1e;
+        color: white;
+        border: 1px solid #888;
+        border-radius: 8px;
+        padding: 10px;
+    }
 
-        .css-1d391kg {
-            background-color: #161616 !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
+    .stButton>button {
+        background-color: #eaeaea;
+        color: black;
+        border: none;
+        border-radius: 8px;
+        padding: 0.6em 1.5em;
+        font-weight: 600;
+    }
 
-# Load API key from Streamlit secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+    .stButton>button:hover {
+        background-color: #ffffff;
+        color: black;
+        transform: scale(1.01);
+        transition: all 0.3s ease-in-out;
+    }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
 
-# Function to generate memo content using OpenAI
+# API key access
+openai.api_key = st.secrets["openai_api_key"]
+
+# PDF Generator
+def generate_pdf(memo_text, company_name):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    pdf.multi_cell(0, 10, memo_text)
+    filename = f"{company_name}_Investment_Memo.pdf"
+    pdf.output(filename)
+    return filename
+
+# GPT Deal Memo Generator
 def generate_memo(company_name):
     prompt = f"""
-    You are an investment analyst. Write a professional investment memo for the company '{company_name}'. 
-    Include the following sections:
-    1. Executive Summary
-    2. Why We Like This Deal
-    3. Business Model
-    4. Financials & Metrics
-    5. Moat Analysis
-    6. Exit Potential
-    7. Risks & Red Flags
-    8. Recommendation
-    The tone should be concise, analytical, and VC/PE-style.
+    Create a crisp, professional one-page investment memo for a venture capital analyst.
+
+    Company: {company_name}
+    Include sections: Business Overview, Market Opportunity, Traction, Business Model, Competitive Landscape, Red Flags, Investment Rationale, and Conclusion.
+    Keep it realistic, jargon-aware, and avoid exaggeration.
     """
 
     response = openai.chat.completions.create(
         model="gpt-4",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
+        messages=[{"role": "user", "content": prompt}],
         temperature=0.3
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content
 
-# Function to create PDF
-class PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 14)
-        self.cell(0, 10, "Investment Memo", ln=True, align="C")
-        self.ln(10)
+# Title Section
+st.markdown('<div class="title">BureauAI</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Investment Memo Generator</div>', unsafe_allow_html=True)
 
-    def chapter_title(self, title):
-        self.set_font("Arial", "B", 12)
-        self.set_text_color(220, 50, 50)
-        self.cell(0, 10, title, ln=True)
-
-    def chapter_body(self, body):
-        self.set_font("Arial", "", 11)
-        self.set_text_color(255, 255, 255)
-        self.multi_cell(0, 10, body)
-        self.ln()
-
-    def add_memo(self, content):
-        sections = content.split("\n\n")
-        for section in sections:
-            if ":" in section:
-                title, body = section.split(":", 1)
-            elif "\n" in section:
-                title, body = section.split("\n", 1)
-            else:
-                title, body = section, ""
-            self.chapter_title(title.strip())
-            self.chapter_body(body.strip())
-
-# Streamlit UI
-st.title("📄 BureauAI - Investment Memo Generator")
+# Input Form
 company_name = st.text_input("Enter Company Name")
 
-if st.button("Generate Memo"):
-    if not company_name:
-        st.warning("Please enter a company name.")
-    else:
-        with st.spinner("Generating memo..."):
-            memo = generate_memo(company_name)
-            pdf = PDF()
-            pdf.set_auto_page_break(auto=True, margin=15)
-            pdf.add_page()
-            pdf.add_memo(memo)
-            file_name = f"{company_name}_Investment_Memo.pdf"
-            file_path = os.path.join("/tmp", file_name)
-            pdf.output(file_path)
+if st.button("Generate Investment Memo") and company_name:
+    with st.spinner("Generating memo..."):
+        memo = generate_memo(company_name)
+        st.subheader("📄 Generated Memo")
+        st.code(memo, language="markdown")
 
-        with open(file_path, "rb") as f:
-            st.download_button("📥 Download Memo PDF", f, file_name, mime="application/pdf")
+        # Generate downloadable PDF
+        pdf_file = generate_pdf(memo, company_name)
+        with open(pdf_file, "rb") as f:
+            st.download_button(
+                label="📥 Download PDF",
+                data=f,
+                file_name=pdf_file,
+                mime="application/pdf"
+            )
