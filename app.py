@@ -40,7 +40,7 @@ custom_css = """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ---- LOGO AND TITLE ----
-st.image("logo.png", use_container_width=True)  # Make sure logo.png is in the same folder
+st.image("logo.png", use_container_width=True)
 st.markdown("<h1 style='text-align: center;'>Bureau.AI</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center;'>Automated VC-style Deal Memo Generator</h4>", unsafe_allow_html=True)
 st.markdown("---")
@@ -51,22 +51,26 @@ client = OpenAI(api_key=st.secrets["openai_api_key"])
 # ---- FUNCTION TO GENERATE DEAL MEMO ----
 def generate_memo(company_name):
     prompt = f"""
-You are a VC analyst at a top-tier fund. Write a one-pager deal memo about the company '{company_name}' based on any publicly available information. Format it with:
+You are a top-tier VC analyst. Write a crisp, one-pager deal memo about the company '{company_name}'.
+Use only bullet points. Keep each point short and professional. Structure it as follows:
+
 - Company Overview
 - Problem & Solution
 - Product
 - Traction
 - Market
 - Competition
+- Competitors (name at least 3)
 - Risks
 - Investment Thesis
-Make it crisp, insightful, and professional.
+
+Avoid fluff. Prioritize clarity and brevity.
     """
 
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an expert VC analyst."},
+            {"role": "system", "content": "You are a sharp, insightful VC analyst who writes bullet-style memos."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.3
