@@ -1,5 +1,6 @@
 import streamlit as st
 import openai
+import os
 
 # ---- PAGE CONFIG ----
 st.set_page_config(
@@ -40,13 +41,21 @@ custom_css = """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ---- LOGO AND TITLE ----
-st.image("logo.png", use_container_width=True)  # Ensure logo.png is in same folder as app.py
+if os.path.exists("logo.png"):
+    st.image("logo.png", use_container_width=True)
+else:
+    st.warning("Logo image not found. Please ensure 'logo.png' is in the same folder as app.py.")
+
 st.markdown("<h1 style='text-align: center;'>Bureau.AI</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center;'>Automated VC-style Deal Memo Generator</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ---- GPT API KEY ----
-openai.api_key = st.secrets["openai_api_key"]
+try:
+    openai.api_key = st.secrets["openai_api_key"]
+except KeyError:
+    st.error("OpenAI API key not found in Streamlit secrets. Please add it in `.streamlit/secrets.toml` as `openai_api_key = \"your-key\"`.")
+    st.stop()
 
 # ---- FUNCTION TO GENERATE DEAL MEMO ----
 def generate_memo(company_name):
@@ -77,8 +86,10 @@ company_name = st.text_input("Enter a Company Name", placeholder="e.g., O'Leche"
 
 if st.button("Generate Deal Memo") and company_name:
     with st.spinner("Generating deal memo..."):
-        memo = generate_memo(company_name)
-        st.markdown("---")
-        st.markdown(f"## 📄 Deal Memo: {company_name}")
-        st.markdown(memo)
-
+        try:
+            memo = generate_memo(company_name)
+            st.markdown("---")
+            st.markdown(f"## 📄 Deal Memo: {company_name}")
+            st.markdown(memo)
+        except Exception as e:
+            st.error(f"An error occurred while generating the memo: {e}")
