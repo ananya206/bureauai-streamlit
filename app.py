@@ -1,108 +1,84 @@
 import streamlit as st
-from fpdf import FPDF
 import openai
-import os
-from datetime import datetime
 
-# Load OpenAI API key from Streamlit secrets
-openai.api_key = st.secrets["openai_api_key"]
-
-# Page configuration
+# ---- PAGE CONFIG ----
 st.set_page_config(
-    page_title="BUREAU.AI Deal Memo Generator",
+    page_title="Bureau.AI - Deal Memo Generator",
+    page_icon="🧠",
     layout="centered",
-    page_icon="📄",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="auto"
 )
 
-# Add dark theme with custom CSS
-st.markdown("""
-    <style>
-        body, .stApp {
-            background-color: #111111;
-            color: #e0e0e0;
-        }
-        .title {
-            font-size: 2.5em;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 10px;
-            color: #ffffff;
-        }
-        .subtitle {
-            text-align: center;
-            font-size: 1.2em;
-            color: #bbbbbb;
-        }
-        .stTextInput > label {
-            color: #dddddd;
-        }
-        .stButton > button {
-            background-color: #009999;
-            color: white;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# Load logo
-st.image("logo.png", use_column_width=True)
-
-# Title
-st.markdown('<div class="title">BUREAU.AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Auto-generate high-quality 1-pager deal memos from a company name</div>', unsafe_allow_html=True)
-
-# Input field
-company_name = st.text_input("Enter the company name (e.g., O'Leche):")
-
-# Function to generate memo
-def generate_memo(company):
-    prompt = f"""
-You are a Venture Capital Analyst. Write a concise, VC-style 1-pager deal memo for the company "{company}". 
-It should include:
-
-- Company Overview  
-- Product/Service  
-- Market Opportunity  
-- Competitive Landscape  
-- Traction / Metrics  
-- Business Model  
-- Red Flags (if any)  
-- Investment Rationale  
-- Exit Potential  
-- Investment Recommendation  
-
-Use a professional tone. Keep it realistic and compelling.
+# ---- DARK MODE VC STYLING ----
+custom_css = """
+<style>
+    body {
+        background-color: #0F1117;
+        color: #FFFFFF;
+    }
+    .stApp {
+        background-color: #0F1117;
+    }
+    h1, h2, h3, h4, h5, h6, p, label, .stTextInput > label {
+        color: #FFFFFF !important;
+    }
+    .stTextInput input {
+        background-color: #1C1F26;
+        color: white;
+    }
+    .stButton button {
+        background-color: #2563eb;
+        color: white;
+        border-radius: 10px;
+    }
+    .stButton button:hover {
+        background-color: #1d4ed8;
+        color: white;
+    }
+</style>
 """
+st.markdown(custom_css, unsafe_allow_html=True)
 
-    response = openai.chat.completions.create(
+# ---- LOGO AND TITLE ----
+st.image("logo.png", use_container_width=True)  # Ensure logo.png is in same folder as app.py
+st.markdown("<h1 style='text-align: center;'>Bureau.AI</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center;'>Automated VC-style Deal Memo Generator</h4>", unsafe_allow_html=True)
+st.markdown("---")
+
+# ---- GPT API KEY ----
+openai.api_key = st.secrets["openai_api_key"]
+
+# ---- FUNCTION TO GENERATE DEAL MEMO ----
+def generate_memo(company_name):
+    prompt = f"""
+You are a VC analyst at a top-tier fund. Write a one-pager deal memo about the company '{company_name}' based on any publicly available information. Format it with:
+- Company Overview
+- Problem & Solution
+- Product
+- Traction
+- Market
+- Competition
+- Risks
+- Investment Thesis
+Make it crisp, insightful, and professional.
+    """
+    response = openai.ChatCompletion.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+        messages=[
+            {"role": "system", "content": "You are an expert VC analyst."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3
     )
-
     return response.choices[0].message.content.strip()
 
-# Function to save memo as PDF
-def save_pdf(content, filename):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Arial", size=12)
-    for line in content.split('\n'):
-        pdf.multi_cell(0, 10, line)
-    pdf.output(filename)
+# ---- MAIN APP INTERFACE ----
+company_name = st.text_input("Enter a Company Name", placeholder="e.g., O'Leche")
 
-# Generate memo
-if st.button("Generate Deal Memo"):
-    if not company_name:
-        st.warning("Please enter a company name.")
-    else:
-        with st.spinner("Generating memo..."):
-            memo = generate_memo(company_name)
-            filename = f"{company_name}_Deal_Memo.pdf"
-            save_pdf(memo, filename)
-            st.success("Memo generated successfully!")
-            st.download_button(label="📥 Download PDF", data=open(filename, "rb"), file_name=filename, mime="application/pdf")
-            st.markdown("---")
-            st.subheader("📋 Deal Memo Preview")
-            st.markdown(f"```markdown\n{memo}\n```")
+if st.button("Generate Deal Memo") and company_name:
+    with st.spinner("Generating deal memo..."):
+        memo = generate_memo(company_name)
+        st.markdown("---")
+        st.markdown(f"## 📄 Deal Memo: {company_name}")
+        st.markdown(memo)
+
