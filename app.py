@@ -1,80 +1,123 @@
 import streamlit as st
+import openai
 from fpdf import FPDF
-from openai import OpenAI
 import os
-import tempfile
 
-# Initialize the OpenAI client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Custom CSS for VC Dark Theme
+st.markdown("""
+    <style>
+        .stApp {
+            background-color: #0E0E0E;
+            color: #FFFFFF;
+            font-family: 'Segoe UI', sans-serif;
+            background-image: radial-gradient(circle at top left, #1a1a1a, #0E0E0E);
+        }
 
-st.set_page_config(page_title="📄 BureauAI - Deal Memo Generator", layout="centered")
-st.title("📄 BureauAI - Deal Memo Generator")
-st.caption("Generate a 1-page AI-powered deal memo based on a startup or company name.")
+        h1, h2, h3, h4, h5, h6 {
+            color: #ffffff;
+            font-weight: 600;
+        }
 
-# Function to generate investment memo using OpenAI
-def generate_memo(company):
+        .stTextInput>div>div>input,
+        .stTextArea textarea {
+            background-color: rgba(255,255,255,0.05);
+            color: white;
+            border-radius: 8px;
+        }
+
+        button[kind="primary"] {
+            background-color: #D72638;
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        button[kind="primary"]:hover {
+            background-color: #b01e2c;
+            color: white;
+        }
+
+        .css-1d391kg {
+            background-color: #161616 !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Load API key from Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# Function to generate memo content using OpenAI
+def generate_memo(company_name):
     prompt = f"""
-You are an AI investment analyst writing a sharp 1-page deal memo on the company "{company}". Include these sections:
+    You are an investment analyst. Write a professional investment memo for the company '{company_name}'. 
+    Include the following sections:
+    1. Executive Summary
+    2. Why We Like This Deal
+    3. Business Model
+    4. Financials & Metrics
+    5. Moat Analysis
+    6. Exit Potential
+    7. Risks & Red Flags
+    8. Recommendation
+    The tone should be concise, analytical, and VC/PE-style.
+    """
 
-1. Company Overview
-2. Product & Market Fit
-3. Moat Analysis
-4. Financial Snapshot (mock if unknown)
-5. Red Flags
-6. Exit Potential
-7. Why We Like This Deal
-
-Make it crisp, insightful, and persuasive.
-"""
-    response = client.chat.completions.create(
+    response = openai.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "user", "content": prompt}
         ],
         temperature=0.3
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content.strip()
 
-# Function to convert memo text to PDF
-def generate_pdf(company, memo_text):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+# Function to create PDF
+class PDF(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 14)
+        self.cell(0, 10, "Investment Memo", ln=True, align="C")
+        self.ln(10)
 
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, f"Deal Memo: {company}", ln=True, align="C")
-    pdf.ln(10)
+    def chapter_title(self, title):
+        self.set_font("Arial", "B", 12)
+        self.set_text_color(220, 50, 50)
+        self.cell(0, 10, title, ln=True)
 
-    pdf.set_font("Arial", '', 12)
-    for line in memo_text.split("\n"):
-        pdf.multi_cell(0, 10, line)
+    def chapter_body(self, body):
+        self.set_font("Arial", "", 11)
+        self.set_text_color(255, 255, 255)
+        self.multi_cell(0, 10, body)
+        self.ln()
 
-    tmp_dir = tempfile.gettempdir()
-    file_path = os.path.join(tmp_dir, f"{company}_memo.pdf")
-    pdf.output(file_path)
-    return file_path
+    def add_memo(self, content):
+        sections = content.split("\n\n")
+        for section in sections:
+            if ":" in section:
+                title, body = section.split(":", 1)
+            elif "\n" in section:
+                title, body = section.split("\n", 1)
+            else:
+                title, body = section, ""
+            self.chapter_title(title.strip())
+            self.chapter_body(body.strip())
 
 # Streamlit UI
-company_name = st.text_input("Enter company/startup name")
+st.title("📄 BureauAI - Investment Memo Generator")
+company_name = st.text_input("Enter Company Name")
 
 if st.button("Generate Memo"):
-    if company_name:
+    if not company_name:
+        st.warning("Please enter a company name.")
+    else:
         with st.spinner("Generating memo..."):
             memo = generate_memo(company_name)
-            pdf_path = generate_pdf(company_name, memo)
-        st.success("✅ Deal memo generated!")
+            pdf = PDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            pdf.add_memo(memo)
+            file_name = f"{company_name}_Investment_Memo.pdf"
+            file_path = os.path.join("/tmp", file_name)
+            pdf.output(file_path)
 
-        with open(pdf_path, "rb") as f:
-            st.download_button(
-                label="📥 Download Memo as PDF",
-                data=f,
-                file_name=f"{company_name}_memo.pdf",
-                mime="application/pdf"
-            )
-
-        st.markdown("---")
-        st.subheader("📄 Memo Preview")
-        st.text_area("Generated Deal Memo", memo, height=400)
-
-    else:
-        st.warning("Please enter a company name.")
+        with open(file_path, "rb") as f:
+            st.download_button("📥 Download Memo PDF", f, file_name, mime="application/pdf")
