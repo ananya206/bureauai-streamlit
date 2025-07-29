@@ -1,4 +1,5 @@
 import streamlit as st
+import openai
 from openai import OpenAI
 
 # ---- PAGE CONFIG ----
@@ -12,28 +13,31 @@ st.set_page_config(
 # ---- DARK MODE VC STYLING ----
 custom_css = """
 <style>
-    body {
+    body, .stApp {
         background-color: #0F1117;
-        color: #FFFFFF;
+        color: #F1F1F1;
+        font-family: 'Segoe UI', sans-serif;
     }
-    .stApp {
-        background-color: #0F1117;
-    }
-    h1, h2, h3, h4, h5, h6, p, label, .stTextInput > label {
+    h1, h2, h3, h4, h5, h6, p, label {
         color: #FFFFFF !important;
     }
     .stTextInput input {
         background-color: #1C1F26;
         color: white;
+        border: 1px solid #3D3D3D;
+        border-radius: 8px;
     }
     .stButton button {
         background-color: #2563eb;
         color: white;
         border-radius: 10px;
+        font-weight: bold;
     }
     .stButton button:hover {
         background-color: #1d4ed8;
-        color: white;
+    }
+    .markdown-text-container ul {
+        margin-left: 1.5em;
     }
 </style>
 """
@@ -45,32 +49,28 @@ st.markdown("<h1 style='text-align: center;'>Bureau.AI</h1>", unsafe_allow_html=
 st.markdown("<h4 style='text-align: center;'>Automated VC-style Deal Memo Generator</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ---- GPT API CLIENT SETUP ----
+# ---- OPENAI API KEY ----
 client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 # ---- FUNCTION TO GENERATE DEAL MEMO ----
 def generate_memo(company_name):
     prompt = f"""
-You are a top-tier VC analyst. Write a crisp, one-pager deal memo about the company '{company_name}'.
-Use only bullet points. Keep each point short and professional. Structure it as follows:
+You are a venture capital analyst creating a one-pager deal memo on the company '{company_name}'. Use only bullet points under each section and keep all points crisp and under 25 words each. Include a dedicated section for 'Key Competitors'. Format:
 
 - Company Overview
 - Problem & Solution
 - Product
 - Traction
 - Market
-- Competition
-- Competitors (name at least 3)
+- Key Competitors
 - Risks
 - Investment Thesis
-
-Avoid fluff. Prioritize clarity and brevity.
+Keep tone sharp and insights professional. No long paragraphs.
     """
-
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are a sharp, insightful VC analyst who writes bullet-style memos."},
+            {"role": "system", "content": "You are a concise, sharp venture capital analyst."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.3
@@ -88,4 +88,4 @@ if st.button("Generate Deal Memo") and company_name:
             st.markdown(f"## 📄 Deal Memo: {company_name}")
             st.markdown(memo)
         except Exception as e:
-            st.error(f"An error occurred while generating the memo:\n\n{e}")
+            st.error(f"❌ An error occurred while generating the memo:\n\n{e}")
