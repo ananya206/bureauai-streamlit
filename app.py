@@ -46,7 +46,7 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # ---- LOGO AND TITLE ----
 st.image("logo.png", use_container_width=True)
 st.markdown("<h1 style='text-align: center;'>Bureau.AI</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center;'>Automated VC-style Deal Memo Generator</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center;'>From Idea to Investment Insight — Instantly</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ---- OPENAI API KEY ----
