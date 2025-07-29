@@ -45,7 +45,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Load logo
-st.image("Screenshot 2025-07-29 at 11.38.00 AM.png", use_column_width=True)
+st.image("logo.png", use_column_width=True)
 
 # Title
 st.markdown('<div class="title">BUREAU.AI</div>', unsafe_allow_html=True)
