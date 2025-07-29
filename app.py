@@ -1,6 +1,5 @@
 import streamlit as st
-import openai
-import os
+from openai import OpenAI
 
 # ---- PAGE CONFIG ----
 st.set_page_config(
@@ -41,21 +40,13 @@ custom_css = """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ---- LOGO AND TITLE ----
-if os.path.exists("logo.png"):
-    st.image("logo.png", use_container_width=True)
-else:
-    st.warning("Logo image not found. Please ensure 'logo.png' is in the same folder as app.py.")
-
+st.image("logo.png", use_container_width=True)  # Make sure logo.png is in the same folder
 st.markdown("<h1 style='text-align: center;'>Bureau.AI</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center;'>Automated VC-style Deal Memo Generator</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ---- GPT API KEY ----
-try:
-    openai.api_key = st.secrets["openai_api_key"]
-except KeyError:
-    st.error("OpenAI API key not found in Streamlit secrets. Please add it in `.streamlit/secrets.toml` as `openai_api_key = \"your-key\"`.")
-    st.stop()
+# ---- GPT API CLIENT SETUP ----
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 # ---- FUNCTION TO GENERATE DEAL MEMO ----
 def generate_memo(company_name):
@@ -71,7 +62,8 @@ You are a VC analyst at a top-tier fund. Write a one-pager deal memo about the c
 - Investment Thesis
 Make it crisp, insightful, and professional.
     """
-    response = openai.ChatCompletion.create(
+
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are an expert VC analyst."},
@@ -92,4 +84,4 @@ if st.button("Generate Deal Memo") and company_name:
             st.markdown(f"## 📄 Deal Memo: {company_name}")
             st.markdown(memo)
         except Exception as e:
-            st.error(f"An error occurred while generating the memo: {e}")
+            st.error(f"An error occurred while generating the memo:\n\n{e}")
